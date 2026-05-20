@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firefox Premium</title>
+    <style>
+        /* Base Theme Requirements */
+        :root {
+            --bg-color: #000000;         /* Completely pitch black */
+            --text-color: #ffffff;       /* White text */
+            --outline-color: #ffffff;    /* Thin white outline */
+            --link-color: #8ab4f8;       /* Dark mode friendly blue for links */
+            --url-color: #81c995;        /* Dark mode friendly green for URLs */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Header & Positioning */
+        .header {
+            margin-top: 35vh; /* Places it in the middle initially */
+            text-align: center;
+            width: 100%;
+            transition: margin-top 0.5s ease; /* Smooth animation when searching */
+        }
+
+        /* When search executes, this class moves the bar to the top */
+        .header.active {
+            margin-top: 5vh;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 300;
+            margin: 0 0 25px 0;
+            letter-spacing: 1px;
+        }
+
+        /* Search Bar Design */
+        .search-container {
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 14px 24px;
+            background-color: transparent;
+            border: 1px solid var(--outline-color); /* Thin outlined search bar */
+            border-radius: 30px;
+            color: var(--text-color);
+            font-size: 1.1rem;
+            outline: none;
+            box-sizing: border-box;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .search-bar:focus {
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+        }
+
+        /* Search Results Styling */
+        #results-container {
+            width: 100%;
+            max-width: 650px;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-top: 30px;
+        }
+
+        .result-item {
+            margin-bottom: 35px;
+            text-align: left;
+        }
+
+        .result-url {
+            color: var(--url-color);
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .result-title {
+            color: var(--link-color);
+            font-size: 1.4rem;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .result-title:hover {
+            text-decoration: underline;
+        }
+
+        .result-snippet {
+            color: #bdc1c6;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        /* System Text */
+        .info-text {
+            color: #888888;
+            font-size: 0.95rem;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header" id="header">
+        <h1>Firefox Premium</h1>
+        <div class="search-container">
+            <form id="searchForm">
+                <input type="text" id="searchInput" class="search-bar" placeholder="Search the web..." autocomplete="off">
+            </form>
+        </div>
+    </div>
+
+    <div id="results-container"></div>
+    <div id="loading" class="info-text" style="display: none; width: 100%; max-width: 650px; padding: 0 20px;">Fetching from Google...</div>
+
+    <script>
+        // ==============================================================================
+        // TO ACTIVATE REAL GOOGLE RESULTS:
+        // Replace these two variables with your free Google API credentials.
+        // ==============================================================================
+        const API_KEY = 'YOUR_GOOGLE_API_KEY';
+        const CX_ID = 'YOUR_GOOGLE_CX_ID';
+
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const header = document.getElementById('header');
+        const resultsContainer = document.getElementById('results-container');
+        const loading = document.getElementById('loading');
+
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                performSearch(query);
+            }
+        });
+
+        async function performSearch(query) {
+            // Animate search bar to the top of the screen
+            header.classList.add('active');
+            resultsContainer.innerHTML = '';
+            
+            // If the API keys aren't set up yet, show Demo Results in pitch black theme
+            if (API_KEY === 'YOUR_GOOGLE_API_KEY') {
+                showDemoResults(query);
+                return;
+            }
+
+            loading.style.display = 'block';
+
+            try {
+                // Pulls live data directly from Google's servers
+                const response = await fetch(`https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${CX_ID}&q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (data.items && data.items.length > 0) {
+                    data.items.forEach(item => {
+                        renderResult(item.title, item.link, item.formattedUrl, item.snippet);
+                    });
+                } else {
+                    resultsContainer.innerHTML = '<div class="info-text">No results found.</div>';
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                resultsContainer.innerHTML = `<div class="info-text" style="color:#ff6b6b;">Error fetching results. Ensure your API Key and CX ID are correct.</div>`;
+            }
+        }
+
+        // Formats Google's raw text into your Pitch Black theme
+        function renderResult(title, link, displayLink, snippet) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'result-item';
+
+            const urlElement = document.createElement('div');
+            urlElement.className = 'result-url';
+            urlElement.textContent = displayLink;
+
+            const titleElement = document.createElement('a');
+            titleElement.className = 'result-title';
+            titleElement.href = link;
+            titleElement.textContent = title;
+            titleElement.target = "_blank"; // Opens link in new tab
+
+            const snippetElement = document.createElement('div');
+            snippetElement.className = 'result-snippet';
+            snippetElement.textContent = snippet;
+
+            resultDiv.appendChild(urlElement);
+            resultDiv.appendChild(titleElement);
+            resultDiv.appendChild(snippetElement);
+
+            resultsContainer.appendChild(resultDiv);
+        }
+
+        // Demo function so you can see the interface design instantly
+        function showDemoResults(query) {
+            const demoWarning = document.createElement('div');
+            demoWarning.className = 'info-text';
+            demoWarning.innerHTML = `<em>Note: These are sample results. To pull live Google results, follow the API setup instructions!</em>`;
+            resultsContainer.appendChild(demoWarning);
+
+            renderResult(
+                `${query} - Wikipedia`,
+                `https://en.wikipedia.org/wiki/${query}`,
+                `en.wikipedia.org › wiki › ${query}`,
+                `Here is a sample result for "${query}". The theme is completely pitch-black (#000000), utilizing dark-mode friendly blue and green colors for hyperlinks and URLs.`
+            );
+            
+            renderResult(
+                `Mozilla Firefox - Official Site`,
+                `https://www.mozilla.org/`,
+                `www.mozilla.org`,
+                `Get the browser that protects what’s important. No shady privacy policies or back doors for advertisers. Just a lightning fast, strictly dark-mode search engine.`
+            );
+        }
+    </script>
+</body>
+</html>
